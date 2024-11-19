@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">RoomUU1</string>
+    <string name="title_text">Контакты</string>
+    <string name="exit">Выход</string>
+    <string name="contact_name">Фамилия</string>
+    <string name="contact_phone">Телефон</string>
+    <string name="save">Сохранить</string>
+</resources>
