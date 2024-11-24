@@ -5,11 +5,15 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "myContacts")
-data class Contact (
+data class Contact(
     @ColumnInfo(name = "name")
     var nameDB: String,
     @ColumnInfo(name = "phone")
-    var phoneDB: String
-){
+    var phoneDB: String,
+    @ColumnInfo(name = "time_created")
+    var timeDB: String
+
+) {
     @PrimaryKey(autoGenerate = true)
-    var id = 0}
+    var id = 0
+}

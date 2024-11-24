@@ -7,19 +7,19 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import kotlinx.coroutines.*
 import ru.zatsoft.roomuu1.databinding.ActivityMainBinding
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.TimeZone
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), ContactAdapter.ContactClickListener {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var toolBar: Toolbar
-    private lateinit var adapter: CustomAdapter
-    private lateinit var contacts: MutableList<Contacts>
-    var db: ContactDatabase? = null
-
+    private lateinit var viewModel: ContactViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,56 +30,48 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(toolBar)
         title = " "
 
-        db = ContactDatabase.getDatabase(this)
+//        val inputKeyboard = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
 
-        val inputKeyboard = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-
-        contacts = mutableListOf()
-        adapter = CustomAdapter(contacts)
+        binding.listView.layoutManager = LinearLayoutManager(this)
+        val adapter = ContactAdapter(this, this)
         binding.listView.adapter = adapter
 
-
-        binding.listView.layoutManager =
-            LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
+        viewModel = ViewModelProvider(
+            this,
+            ViewModelProvider.AndroidViewModelFactory.getInstance(application)
+        )[ContactViewModel::class.java]
+        viewModel.contactes.observe(this, { list ->
+            list?.let { adapter.updateList(it) }
+        })
         binding.listView.addItemDecoration(MyItemDecoration(this, R.drawable.divider))
         binding.listView.setHasFixedSize(false)
-//        adapter.setOnContactsClickListener(
-//            object : CustomAdapter.OnContactClickListener {
-//                override fun onContactClick(contacts: Contacts, position: Int) {
-//                    itemPosition = position
-//                    val intent = Intent(this@MainActivity, ItemActivity::class.java)
-//                    intent.putExtra("contacts", contacts)
-//                    startActivity(intent)
-//                }
-//            }
-//        )
-
     }
 
-    override fun onResume(){
+    override fun onResume() {
         super.onResume()
         binding.btnSave.setOnClickListener {
-            val contact = Contact(binding.edName.text.toString(), binding.edPhone.text.toString())
-            addContact(db!!, contact)
-            readDatabase(db!!)
-//            try {
-//                contacts.add(Contacts(
-//                    binding.edName.text.toString(),
-//                    binding.edPhone.text.toString() ))
-//
-//                adapter.notifyDataSetChanged()
-//                clearView()
-//                inputKeyboard.hideSoftInputFromWindow(this.currentFocus?.windowToken, 0)
-//            } catch (e: NumberFormatException) {
-//                Toast.makeText(this, "Неправильный ввод", Toast.LENGTH_LONG).show()
-//            }
+            val formatTime = formatMilliseconds(Date().time)
+            val contact = Contact(
+                binding.edName.text.toString(), binding.edPhone.text.toString(),
+                formatTime
+            )
+            if (contact.nameDB.isNotEmpty()) {
+                viewModel.insertContact(contact)
+                Toast.makeText(
+                    this,
+                    "${contact.nameDB} ${contact.phoneDB} добавлен",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            binding.edName.text.clear()
+            binding.edPhone.text.clear()
         }
     }
 
-    private fun clearView() {
-        binding.edName.text.clear()
-        binding.edName .text.clear()
-        binding.edPhone .text?.clear()
+    fun formatMilliseconds(time: Long): String {
+        val formatTime = SimpleDateFormat("dd.MM.yy HH:mm")
+        formatTime.timeZone = TimeZone.getTimeZone("GMT+03")
+        return formatTime.format(Date(time))
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -93,18 +85,8 @@ class MainActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun addContact (db: ContactDatabase, contact: Contact) =
-        GlobalScope.async{
-            db.getContactDao().insert(contact)
-        }
-    private fun readDatabase(db: ContactDatabase) =
-        GlobalScope.async{
-            var contacts = StringBuffer()
-//            binding.tvList.text = ""
-            val list = db.getContactDao().getAllContacts()
-            println("------- ${list.size}")
-            for(i in list.indices){contacts.append("${list[i].nameDB} ${list[i].phoneDB} \n" )}
-            println(list.toString())
-        runOnUiThread {binding.tvList.text = contacts.toString()}
-        }
+    override fun onItemClicked(contact: Contact) {
+        viewModel.deleteContact(contact)
+        Toast.makeText(this, "${contact.nameDB} удален", Toast.LENGTH_LONG).show()
+    }
 }
